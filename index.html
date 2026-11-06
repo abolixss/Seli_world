@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SELI'S LITTLE WORLD</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#b9e5d0;font-family:Arial}
+canvas{display:block}
+#hud{position:fixed;top:15px;left:15px;color:#fff;background:#ffffff55;padding:12px 18px;border-radius:16px;z-index:2}
+#joy{position:fixed;bottom:25px;left:25px;width:115px;height:115px;border-radius:50%;background:#ffffff55;border:2px solid #fff8;z-index:3;touch-action:none}
+#stick{position:absolute;left:34px;top:34px;width:45px;height:45px;border-radius:50%;background:#fff}
+#hint{position:fixed;bottom:18px;right:18px;color:#fff;background:#ffffff55;padding:12px;border-radius:12px}
+</style>
+</head>
+<body>
+<div id="hud">♡ SELI'S GARDEN</div>
+<div id="joy"><div id="stick"></div></div>
+<div id="hint">باغ کوچولومون 🌷</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xb9e5d0);
+scene.fog=new THREE.Fog(0xb9e5d0,18,65);
+
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,100);
+camera.position.set(0,5,9);
+
+const renderer=new THREE.WebGLRenderer({antialias:false});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.shadowMap.enabled=false;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x789b72,2));
+const sun=new THREE.DirectionalLight(0xffffff,2);
+sun.position.set(-5,10,5);
+scene.add(sun);
+
+function mat(color){return new THREE.MeshLambertMaterial({color})}
+function cube(w,h,d,color,x,y,z){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
+ m.position.set(x,y,z);scene.add(m);return m;
+}
+
+// Garden ground
+cube(60,.2,60,0x8fc98d,0,-.1,0);
+
+// Stone path
+for(let i=0;i<9;i++){
+ const s=new THREE.Mesh(new THREE.CylinderGeometry(.48,.55,.12,7),mat(0xd9cbb5));
+ s.position.set(0,.02,5-i*1.3);scene.add(s);
+}
+
+// Flowers
+function flower(x,z,color){
+ const stem=cube(.07,.65,.07,0x398653,x,.35,z);
+ const f=new THREE.Mesh(new THREE.SphereGeometry(.23,7,6),mat(color));
+ f.position.set(x,.78,z);scene.add(f);
+ for(let i=0;i<4;i++){
+  const p=new THREE.Mesh(new THREE.SphereGeometry(.14,6,5),mat(color));
+  p.position.set(x+Math.cos(i*Math.PI/2)*.2,.78,z+Math.sin(i*Math.PI/2)*.2);
+  scene.add(p);
+ }
+}
+for(let i=0;i<24;i++){
+ const x=(Math.random()-.5)*20;
+ const z=(Math.random()-.5)*24;
+ flower(x,z,[0xffa6c8,0xffffff,0xffd66b,0xbda5ef][i%4]);
+}
+
+// House
+cube(5,3,4,0xffe4e7,-5,1.5,-7);
+const roof=new THREE.Mesh(new THREE.ConeGeometry(4,2,4),mat(0xd78b9c));
+roof.position.set(-5,4,-7);roof.rotation.y=Math.PI/4;scene.add(roof);
+cube(1,2,.12,0x9b6653,-5,1,-4.94);
+
+// Character placeholder
+const player=new THREE.Group();
+const body=new THREE.Mesh(new THREE.CylinderGeometry(.32,.42,1.15,7),mat(0x24212a));
+body.position.y=.95;player.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.42,9,8),mat(0xe9b99e));
+head.position.y=1.8;player.add(head);
+const hair=new THREE.Mesh(new THREE.SphereGeometry(.44,8,7),mat(0x29202a));
+hair.position.set(0,2.05,-.04);player.add(hair);
+const legs=cube(.65,.7,.3,0x24212a,0,0,0);
+legs.position.set(0,.35,0);player.add(legs);
+scene.add(player);
+player.position.set(0,0,4);
+
+// Cream puppy
+const dog=new THREE.Group();
+const db=new THREE.Mesh(new THREE.SphereGeometry(.42,8,7),mat(0xf2e4c9));
+db.scale.set(1,.75,1.2);db.position.y=.42;dog.add(db);
+const dh=new THREE.Mesh(new THREE.SphereGeometry(.29,8,7),mat(0xf2e4c9));
+dh.position.set(0,.75,-.35);dog.add(dh);
+dog.position.set(1,0,5);scene.add(dog);
+
+// Touch joystick
+let dx=0,dz=0,active=false;
+const joy=document.getElementById('joy');
+const stick=document.getElementById('stick');
+joy.addEventListener('pointerdown',e=>{active=true;joy.setPointerCapture(e.pointerId);moveJoy(e)});
+joy.addEventListener('pointermove',e=>{if(active)moveJoy(e)});
+function moveJoy(e){
+ const r=joy.getBoundingClientRect();
+ let x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2);
+ const len=Math.hypot(x,y),max=36;
+ if(len>max){x=x/len*max;y=y/len*max}
+ stick.style.transform=`translate(${x}px,${y}px)`;
+ dx=x/max;dz=y/max;
+}
+function reset(){active=false;dx=0;dz=0;stick.style.transform=''}
+joy.addEventListener('pointerup',reset);
+joy.addEventListener('pointercancel',reset);
+
+function animate(){
+ requestAnimationFrame(animate);
+ player.position.x+=dx*.055;
+ player.position.z+=dz*.055;
+ player.position.x=Math.max(-24,Math.min(24,player.position.x));
+ player.position.z=Math.max(-24,Math.min(24,player.position.z));
+ dog.position.x+=(player.position.x+1-dog.position.x)*.035;
+ dog.position.z+=(player.position.z+1-dog.position.z)*.035;
+ camera.position.x+=(player.position.x-camera.position.x)*.06;
+ camera.position.z+=(player.position.z+7-camera.position.z)*.06;
+ camera.lookAt(player.position.x,1,player.position.z);
+ renderer.render(scene,camera);
+}
+animate();
+
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+                            </html>
+  
